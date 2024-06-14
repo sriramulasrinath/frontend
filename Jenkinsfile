@@ -29,6 +29,18 @@ pipeline{
                 """
             }
         }
+        stage('Sonar Scan') {
+            environment {
+                scannerHome = tool 'sonar-6.0' //--> which version i want mentioned here referring scanner CLI
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('sonar-6.0') { // refering the server
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
         stage('nexus artifactory uploading'){
             steps{
                 script{
@@ -50,16 +62,16 @@ pipeline{
                 }
             }
         }
-        stage('Deploy'){
-            steps{
-                script{
-                    def params = [
-                        string(name: 'appVersion', value: "${appVersion}")
-                    ]
-                    build job: 'frontend-deploy', parameters: params, wait: false
-                }
-            }
-        }
+        // stage('Deploy'){
+        //     steps{
+        //         script{
+        //             def params = [
+        //                 string(name: 'appVersion', value: "${appVersion}")
+        //             ]
+        //             build job: 'frontend-deploy', parameters: params, wait: false
+        //         }
+        //     }
+        // }
     }
     post { 
         always { 
