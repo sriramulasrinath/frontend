@@ -29,39 +29,62 @@ pipeline{
                 """
             }
         }
-        stage('Sonar Scan') {
-            environment {
-                scannerHome = tool 'sonar-6.0' //--> which version i want mentioned here referring scanner CLI
-            }
-            steps {
-                script {
-                    withSonarQubeEnv('sonar-6.0') { // refering the server
-                        sh "${scannerHome}/bin/sonar-scanner"
-                    }
-                }
-            }
-        }
-        stage('nexus artifactory uploading'){
+        stage('Docker build'){
             steps{
-                script{
-                    nexusArtifactUploader(
-                        nexusVersion: 'nexus3',
-                        protocol: 'http',
-                        nexusUrl: "${nexusUrl}",
-                        groupId: 'com.expense',
-                        version: "${appVersion}",
-                        repository: 'frontend',
-                        credentialsId: 'nexus-auth',
-                        artifacts: [
-                            [artifactId: "frontend",
-                            classifier: '',
-                            file: "frontend-${appVersion}.zip",
-                            type: 'zip']
-                        ]
-                    )
-                }
+                sh """
+                    aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
+
+                    docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-frontend:${appVersion} .
+
+                    
+                    docker push ${account_id}.dkr.ecr.${region}.amazonaws.com/expense-backend:${appVersion}
+
+                """
             }
         }
+        stage('Docker Deploy'){
+            steps{
+                sh """
+                    aws eks update-kubeconfig --region us-east-1 --name expense-dev
+                    cd helm
+                    sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
+                    helm install frontend .
+                """
+            }
+        }
+        // stage('Sonar Scan') {
+        //     environment {
+        //         scannerHome = tool 'sonar-6.0' //--> which version i want mentioned here referring scanner CLI
+        //     }
+        //     steps {
+        //         script {
+        //             withSonarQubeEnv('sonar-6.0') { // refering the server
+        //                 sh "${scannerHome}/bin/sonar-scanner"
+        //             }
+        //         }
+        //     }
+        // }
+        // stage('nexus artifactory uploading'){
+        //     steps{
+        //         script{
+        //             nexusArtifactUploader(
+        //                 nexusVersion: 'nexus3',
+        //                 protocol: 'http',
+        //                 nexusUrl: "${nexusUrl}",
+        //                 groupId: 'com.expense',
+        //                 version: "${appVersion}",
+        //                 repository: 'frontend',
+        //                 credentialsId: 'nexus-auth',
+        //                 artifacts: [
+        //                     [artifactId: "frontend",
+        //                     classifier: '',
+        //                     file: "frontend-${appVersion}.zip",
+        //                     type: 'zip']
+        //                 ]
+        //             )
+        //         }
+        //     }
+        // }
         // stage('Deploy'){
         //     steps{
         //         script{
