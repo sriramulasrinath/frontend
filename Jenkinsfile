@@ -10,6 +10,8 @@ pipeline{
     environment{
         def appVersion = '' //variable declaration
         nexusUrl = "nexus.srinath.online:8081"
+        region = "us-east-1"
+        account_id = "891376930920"
     }
     stages{
         stage("read the version"){
